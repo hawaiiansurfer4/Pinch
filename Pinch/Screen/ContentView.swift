@@ -11,10 +11,20 @@ struct ContentView: View {
     
     @State private var isAnimating: Bool = false
     @State private var imageScale: CGFloat = 1
+    @State private var imageOffset: CGSize = .zero
+    
+    func resetImageState() {
+        return withAnimation(.spring()) {
+            imageScale = 1
+            imageOffset = .zero
+        }
+    }
     
     var body: some View {
         NavigationView {
             ZStack {
+                Color.clear
+                
                 Image("magazine-front-cover")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
@@ -23,6 +33,7 @@ struct ContentView: View {
                     .shadow(color: .black.opacity(0.2), radius: 12, x: 2, y: 2)
                     .opacity(isAnimating ? 1 : 0)
                     .animation(.linear(duration: 1), value: isAnimating)
+                    .offset(x: imageOffset.width, y: imageOffset.height)
                     .scaleEffect(imageScale)
                     .onTapGesture(count: 2, perform: {
                         if imageScale == 1 {
@@ -30,18 +41,40 @@ struct ContentView: View {
                                 imageScale = 5
                             }
                         } else {
-                            withAnimation(.spring()) {
-                                imageScale = 1
-                            }
+                            resetImageState()
                         }
                     })
-                
+                    .gesture(
+                        DragGesture()
+                        .onChanged { value in
+                            withAnimation(.linear(duration: 1)) {
+                                if imageScale >= 1 && imageScale <= 5 {
+                                    imageOffset = value.translation
+                                } else if imageScale > 5 {
+                                    imageScale = 5
+                                }
+                            }
+                        }
+                        .onEnded { _ in
+                            if imageScale > 5 {
+                              imageScale = 5
+                            } else if imageScale <= 1 {
+                              resetImageState()
+                            }
+                        }
+                    )
             }
             .navigationTitle("Pinch & Zoom")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear(perform: {
                 isAnimating = true
             })
+            .overlay(
+            InfoPanelVIew(scale: imageScale, offset: imageOffset)
+                .padding(.horizontal)
+                .padding(.top, 30)
+            , alignment: .top
+            )
         }
         .navigationViewStyle(.stack)
     }
